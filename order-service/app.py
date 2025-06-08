@@ -12,7 +12,7 @@ def create_order():
     routing_key = "order.created"
 
     try:
-        print("Started processing the order", flush=True)
+        print("[Order] Started processing the order", flush=True)
 
         # Simulating basic order data
         order = {
@@ -20,7 +20,7 @@ def create_order():
             "status": "created"
         }
 
-        # Send order data to orchestrator queue
+        # Publish order data to the exchange
         publish_message(exchange=exchange, routing_key=routing_key, message=json.dumps(order))
 
         return jsonify({"message": "Order created and event published", "order": order}), 201
