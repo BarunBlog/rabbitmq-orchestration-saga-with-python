@@ -1,9 +1,11 @@
-FROM python:3.14.0b2-alpine3.22
+FROM python:3.14.0b2-slim
 
 WORKDIR /app
 
-COPY . .
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip3 install -r requirements.txt
+
+COPY . .
 
 CMD ["python", "app.py"]

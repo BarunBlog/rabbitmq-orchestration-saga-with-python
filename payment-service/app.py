@@ -1,5 +1,5 @@
 import json
-from rabbitmq import connect_rabbit
+from rabbitmq import connect_rabbit, publish_message
 
 def process_payment_callback(ch, method, properties, body):
     data = json.loads(body)
@@ -8,6 +8,15 @@ def process_payment_callback(ch, method, properties, body):
     # Simulate payment processing...
     data['payment_status'] = 'paid'
     print(f"[PAYMENT] Payment processed: {data}", flush=True)
+
+    # Send the message to the Orchestrator
+    exchange = "payment_exchange"
+    routing_key = "payment.completed"
+
+    # Publish payment completion data to the exchange
+    publish_message(exchange=exchange, routing_key=routing_key, message=json.dumps(data))
+
+    print(f"[Payment] Sent payment completion message to Orchestrator. message: {data}", flush=True)
 
     # Acknowledge the message
     ch.basic_ack(delivery_tag=method.delivery_tag)
