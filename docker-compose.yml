@@ -13,9 +13,14 @@ services:
        - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - rabbitmq_network
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   saga-orchestrator:
-    build: saga-orchestrator
+    build: ./saga-orchestrator
     container_name: saga-orchestrator
     environment:
       RABBITMQ_USER: ${RABBITMQ_USER}
@@ -25,7 +30,9 @@ services:
     networks:
       - rabbitmq_network
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
+
 
   order-service:
     build: ./order-service
@@ -40,7 +47,8 @@ services:
     networks:
       - rabbitmq_network
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   payment-service:
     build: ./payment-service
@@ -55,7 +63,8 @@ services:
     networks:
       - rabbitmq_network
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
   warehouse-service:
     build: ./warehouse-service
@@ -70,7 +79,8 @@ services:
     networks:
       - rabbitmq_network
     depends_on:
-      - rabbitmq
+      rabbitmq:
+        condition: service_healthy
 
 volumes:
   rabbitmq_data:
