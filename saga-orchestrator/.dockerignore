@@ -1,0 +1,25 @@
+# Python junk
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+myvenv/
+.env/
+
+# VS Code
+.vscode/
+
+# Pytest caches
+.pytest_cache/
+.coverage
+
+# Git and logs
+.git/
+*.log
+
+
+.DS_Store
+*.db
