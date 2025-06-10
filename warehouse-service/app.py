@@ -9,6 +9,15 @@ def process_warehouse_deduct_callback(ch, method, properties, body):
     data['inventory_status'] = 'deducted'
     print(f"[WAREHOUSE] Inventory deducted for order: {data}", flush=True)
 
+    # Send the message to the Orchestrator
+    exchange = "orchestrator_exchange"
+    routing_key = "warehouse.deducted"
+
+    # Publish payment completion data to the exchange
+    publish_message(exchange=exchange, routing_key=routing_key, message=json.dumps(data))
+
+    print(f"[Warehouse] Sent warehouse inventory deducted message to Orchestrator. message: {data}", flush=True)
+
     # Acknowledge the message
     ch.basic_ack(delivery_tag=method.delivery_tag)
 

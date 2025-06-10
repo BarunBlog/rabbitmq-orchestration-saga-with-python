@@ -21,7 +21,12 @@ def process_payment_completed_callback(ch, method, properties, body):
 
     initiate_warehouse(payment_data)
 
+def process_warehouse_deducted_callback(ch, method, properties, body):
+    warehouse_data = json.loads(body)
+    print(f"[Orchestrator] Received 'warehouse.deducted' event: {warehouse_data}", flush=True)
 
+    # Acknowledge the message
+    ch.basic_ack(delivery_tag=method.delivery_tag)
 
 
 def consume_order_create_message():
@@ -114,11 +119,41 @@ def initiate_warehouse(payment: dict):
 
     print(f"[Orchestrator] Sent warehouse initiation message: {warehouse_data}", flush=True)
 
+def consume_warehouse_deducted_message():
+    connection, channel = connect_rabbit()
+
+    exchange = "orchestrator_exchange"
+    queue = "orchestrator.warehouse.deducted.queue"
+    routing_key = "warehouse.deducted"
+
+    try:
+        # Declare or create the exchange if needed.
+        channel.exchange_declare(exchange=exchange, exchange_type='direct', durable=True)
+
+        # Declare or create the queue if needed.
+        channel.queue_declare(queue=queue, durable=True)
+
+        # Bind the queue to the specified exchange
+        channel.queue_bind(exchange=exchange, queue=queue, routing_key=routing_key)
+
+        print(f"[Orchestrator] Waiting for messages in queue '{queue}'...", flush=True)
+
+        # Start consuming
+        channel.basic_consume(queue=queue, on_message_callback=process_warehouse_deducted_callback)
+        channel.start_consuming()
+
+    except Exception as e:
+        print(f"[ERROR] Failed to consume message: {e}", flush=True)
+    finally:
+        if 'connection' in locals() and connection.is_open:
+            connection.close()
+
 if __name__ == "__main__":
     # Used tread to run in parallel
     from threading import Thread
 
     Thread(target=consume_order_create_message).start()
     Thread(target=consume_payment_completed_message).start()
+    Thread(target=consume_warehouse_deducted_message).start()
 
 
