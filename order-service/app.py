@@ -1,12 +1,12 @@
 import json
 import uuid
-from flask import Flask, request, jsonify
+from quart import Quart, request, jsonify
 from rabbitmq import publish_message
 
-app = Flask(__name__)
+app = Quart(__name__)
 
 @app.route("/order", methods=["POST"])
-def create_order():
+async def create_order():
 
     exchange = "order_exchange"
     routing_key = "order.created"
@@ -21,7 +21,7 @@ def create_order():
         }
 
         # Publish order data to the exchange
-        publish_message(exchange=exchange, routing_key=routing_key, message=json.dumps(order))
+        await publish_message(exchange=exchange, routing_key=routing_key, message=json.dumps(order))
 
         return jsonify({"message": "Order created and event published", "order": order}), 201
 

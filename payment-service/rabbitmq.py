@@ -1,48 +1,41 @@
+import aio_pika
 import os
-import pika
+
+_connection = None
+_channel = None
+
+async def connect_rabbit():
+    global _connection, _channel
+
+    if _connection is None or _connection.is_closed:
+        print("[RabbitMQ] Connecting to RabbitMQ...", flush=True)
+
+        try:
+            _connection = await aio_pika.connect_robust(os.environ.get("RABBITMQ_URL"))
+            _channel = await _connection.channel()
+
+            print("[RabbitMQ] Connected to RabbitMQ...", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Failed to connect to RabbitMQ: {e}", flush=True)
+
+    return _connection, _channel
 
 
-def connect_rabbit():
-    rabbitmq_user = os.environ.get("RABBITMQ_USER")
-    rabbitmq_pass = os.environ.get("RABBITMQ_PASS")
-    rabbitmq_host = os.environ.get("RABBITMQ_HOST", "localhost")
-    rabbitmq_port = int(os.environ.get("RABBITMQ_PORT", 5672))
+async def publish_message(exchange: str, routing_key: str, message: str):
+    # print(f"[RabbitMQ] Preparing to publish to exchange '{exchange}' with routing key '{routing_key}'", flush=True)
 
-    credentials = pika.PlainCredentials(rabbitmq_user, rabbitmq_pass)
-    parameters = pika.ConnectionParameters(
-        host=rabbitmq_host,
-        port=rabbitmq_port,
-        credentials=credentials
-    )
-
-    connection = pika.BlockingConnection(parameters)
-    channel = connection.channel()
-    return connection, channel
-
-
-def publish_message(exchange: str, routing_key: str, message: str):
-    connection, channel = connect_rabbit()
+    _, channel = await connect_rabbit()
 
     try:
         # Declare or create the exchange if needed.
-        channel.exchange_declare(exchange=exchange, exchange_type='direct', durable=True)
+        exchange_obj = await channel.declare_exchange(name=exchange, type=aio_pika.ExchangeType.DIRECT, durable=True)
 
         # Publish the message to the exchange with the routing key
-        channel.basic_publish(
-            exchange=exchange,
-            routing_key=routing_key,
-            body=message,
-            properties=pika.BasicProperties(
-                delivery_mode=2 # make the message persistent
-            )
+        await exchange_obj.publish(
+            message=aio_pika.Message(body=message.encode(), delivery_mode=aio_pika.DeliveryMode.PERSISTENT),
+            routing_key=routing_key
         )
 
         print(f"Message published to exchange '{exchange}' with routing key '{routing_key}': {message}", flush=True)
-
     except Exception as e:
         print(f"[ERROR] Failed to publish message: {e}", flush=True)
-    finally:
-        if 'connection' in locals() and connection.is_open:
-            connection.close()
-
-
