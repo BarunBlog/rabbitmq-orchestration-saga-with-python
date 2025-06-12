@@ -22,7 +22,7 @@ async def process_payment_callback(body: bytes):
     print(f"[Payment] Sent payment completion message to Orchestrator. message: {dict_data}", flush=True)
 
 async def consume_payment_initiate_message():
-    _, channel = await connect_rabbit()
+    channel = await connect_rabbit()
 
     exchange = "payment_exchange"
     queue = "payment.payment.initiate.queue"

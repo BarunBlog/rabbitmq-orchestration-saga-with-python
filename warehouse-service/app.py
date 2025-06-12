@@ -22,7 +22,7 @@ async def process_warehouse_deduct_callback(body: bytes):
 
 
 async def consume_warehouse_initiate_message():
-    _, channel = await connect_rabbit()
+    channel = await connect_rabbit()
 
     exchange = "warehouse_exchange"
     queue = "warehouse.warehouse.initiate.queue"

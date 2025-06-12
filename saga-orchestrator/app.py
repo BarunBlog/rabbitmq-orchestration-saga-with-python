@@ -26,7 +26,7 @@ async def process_warehouse_deducted_callback(body: bytes):
 
 
 async def consume_order_create_message():
-    _, channel = await connect_rabbit()
+    channel = await connect_rabbit()
 
     exchange = "order_exchange"
     queue = "orchestrator.order.created.queue"
@@ -73,7 +73,7 @@ async def initiate_payment(order: dict):
 
 
 async def consume_payment_completed_message():
-    _, channel = await connect_rabbit()
+    channel = await connect_rabbit()
 
     exchange = "payment_exchange"
     queue = "orchestrator.payment.completed.queue"
@@ -120,7 +120,7 @@ async def initiate_warehouse(payment: dict):
     print(f"[Orchestrator] Sent warehouse initiation message: {warehouse_data}", flush=True)
 
 async def consume_warehouse_deducted_message():
-    _, channel = await connect_rabbit()
+    channel = await connect_rabbit()
 
     exchange = "orchestrator_exchange"
     queue = "orchestrator.warehouse.deducted.queue"

@@ -18,13 +18,13 @@ async def connect_rabbit():
         except Exception as e:
             print(f"[ERROR] Failed to connect to RabbitMQ: {e}", flush=True)
 
-    return _connection, _channel
+    return _channel
 
 
 async def publish_message(exchange: str, routing_key: str, message: str):
     # print(f"[RabbitMQ] Preparing to publish to exchange '{exchange}' with routing key '{routing_key}'", flush=True)
 
-    _, channel = await connect_rabbit()
+    channel = await connect_rabbit()
 
     try:
         # Declare or create the exchange if needed.
