@@ -1,7 +1,6 @@
-import aio_pika
 import asyncio
 import json
-from rabbitmq import connect_rabbit, publish_message
+from rabbitmq import connect_rabbit, publish_message, consume_message
 
 
 async def process_order_callback(body: bytes):
@@ -25,38 +24,6 @@ async def process_warehouse_deducted_callback(body: bytes):
     print(f"[Orchestrator] Received 'warehouse.deducted' event: {warehouse_data}", flush=True)
 
 
-async def consume_order_create_message():
-    channel = await connect_rabbit()
-
-    exchange = "order_exchange"
-    queue = "orchestrator.order.created.queue"
-    routing_key = "order.created"
-
-    try:
-        # Declare or create the exchange if needed.
-        exchange = await channel.declare_exchange(name=exchange, type=aio_pika.ExchangeType.DIRECT, durable=True)
-
-        # Declare or create the queue if needed.
-        queue = await channel.declare_queue(queue, durable=True)
-
-        # Bind the queue to the specified exchange
-        await queue.bind(exchange, routing_key)
-
-        print(f"[Orchestrator] Waiting for messages in queue '{queue}'...", flush=True)
-
-        # Start consuming
-        # await queue.consume(process_order_callback)
-        async with queue.iterator() as queue_iter:
-            async for message in queue_iter:
-                async with message.process():
-                    try:
-                        await process_order_callback(message.body)
-                    except Exception as e:
-                        print(f"[ERROR] Failed to process message: {e}")
-    except Exception as e:
-        print(f"[ERROR] Failed to consume message: {e}", flush=True)
-
-
 async def initiate_payment(order: dict):
     exchange = "payment_exchange"
     routing_key = "payment.initiate"
@@ -70,38 +37,6 @@ async def initiate_payment(order: dict):
     await publish_message(exchange=exchange, routing_key=routing_key, message=json.dumps(payment_data))
 
     print(f"[Orchestrator] Sent payment initiation message: {payment_data}", flush=True)
-
-
-async def consume_payment_completed_message():
-    channel = await connect_rabbit()
-
-    exchange = "payment_exchange"
-    queue = "orchestrator.payment.completed.queue"
-    routing_key = "payment.completed"
-
-    try:
-        # Declare or create the exchange if needed.
-        exchange = await channel.declare_exchange(name=exchange, type=aio_pika.ExchangeType.DIRECT, durable=True)
-
-        # Declare or create the queue if needed.
-        queue = await channel.declare_queue(queue, durable=True)
-
-        # Bind the queue to the specified exchange
-        await queue.bind(exchange, routing_key)
-
-        print(f"[Orchestrator] Waiting for messages in queue '{queue}'...", flush=True)
-
-        # Start consuming
-        async with queue.iterator() as queue_iter:
-            async for message in queue_iter:
-                async with message.process():
-                    try:
-                        await process_payment_completed_callback(message.body)
-                    except Exception as e:
-                        print(f"[ERROR] Failed to process message: {e}")
-
-    except Exception as e:
-        print(f"[ERROR] Failed to consume message: {e}", flush=True)
 
 
 async def initiate_warehouse(payment: dict):
@@ -119,43 +54,13 @@ async def initiate_warehouse(payment: dict):
 
     print(f"[Orchestrator] Sent warehouse initiation message: {warehouse_data}", flush=True)
 
-async def consume_warehouse_deducted_message():
-    channel = await connect_rabbit()
-
-    exchange = "orchestrator_exchange"
-    queue = "orchestrator.warehouse.deducted.queue"
-    routing_key = "warehouse.deducted"
-
-    try:
-        # Declare or create the exchange if needed.
-        exchange = await channel.declare_exchange(name=exchange, type=aio_pika.ExchangeType.DIRECT, durable=True)
-
-        # Declare or create the queue if needed.
-        queue = await channel.declare_queue(queue, durable=True)
-
-        # Bind the queue to the specified exchange
-        await queue.bind(exchange, routing_key)
-
-        print(f"[Orchestrator] Waiting for messages in queue '{queue}'...", flush=True)
-
-        # Start consuming
-        async with queue.iterator() as queue_iter:
-            async for message in queue_iter:
-                async with message.process():
-                    try:
-                        await process_warehouse_deducted_callback(message.body)
-                    except Exception as e:
-                        print(f"[ERROR] Failed to process message: {e}")
-
-    except Exception as e:
-        print(f"[ERROR] Failed to consume message: {e}", flush=True)
-
 
 async def main():
+    await connect_rabbit()
     await asyncio.gather(
-        consume_order_create_message(),
-        consume_payment_completed_message(),
-        consume_warehouse_deducted_message(),
+        consume_message(exchange="order_exchange", queue="orchestrator.order.created.queue", routing_key="order.created", handler=process_order_callback),
+        consume_message(exchange="payment_exchange", queue="orchestrator.payment.completed.queue", routing_key="payment.completed", handler=process_payment_completed_callback),
+        consume_message(exchange="orchestrator_exchange", queue="orchestrator.warehouse.deducted.queue", routing_key="warehouse.deducted", handler=process_warehouse_deducted_callback),
     )
 
 if __name__ == "__main__":

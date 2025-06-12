@@ -1,6 +1,6 @@
 import json
 import uuid
-from quart import Quart, request, jsonify
+from quart import Quart, jsonify
 from rabbitmq import publish_message
 
 app = Quart(__name__)

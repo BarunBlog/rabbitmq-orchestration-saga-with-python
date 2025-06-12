@@ -39,3 +39,29 @@ async def publish_message(exchange: str, routing_key: str, message: str):
         print(f"Message published to exchange '{exchange}' with routing key '{routing_key}': {message}", flush=True)
     except Exception as e:
         print(f"[ERROR] Failed to publish message: {e}", flush=True)
+
+
+async def consume_message(exchange: str, queue: str, routing_key: str, handler: callable):
+    channel = await connect_rabbit()
+
+    try:
+        # Declare or create the exchange if needed.
+        exchange_obj = await channel.declare_exchange(name=exchange, type=aio_pika.ExchangeType.DIRECT, durable=True)
+
+        # Declare or create the queue if needed.
+        queue = await channel.declare_queue(queue, durable=True)
+
+        # Bind the queue to the specified exchange
+        await queue.bind(exchange_obj, routing_key)
+
+        # Start consuming
+        async with queue.iterator() as queue_iter:
+            async for message in queue_iter:
+                async with message.process():
+                    try:
+                        await handler(message.body)
+                    except Exception as e:
+                        print(f"[ERROR] Failed to process message: {e}")
+
+    except Exception as e:
+        print(f"[ERROR] Failed to consume message: {e}", flush=True)
